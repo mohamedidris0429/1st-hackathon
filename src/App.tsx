@@ -25,6 +25,8 @@ import {
 
 type Persona = 'Customer Experience' | 'Merchant Operations' | 'Wholesale & Sourcing' | 'Super Admin';
 
+const getViewPath = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
+
 export default function App() {
   // Sync state with URL hash
   const initialView = useMemo(() => {
@@ -466,7 +468,7 @@ export default function App() {
 
               {/* Open raw view in new tab */}
               <a
-                href={currentView.path}
+                href={getViewPath(currentView.path)}
                 target="_blank"
                 rel="noreferrer"
                 className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-emerald-900/60 transition-colors"
@@ -552,7 +554,7 @@ export default function App() {
               <iframe
                 key={iframeKey}
                 ref={iframeRef}
-                src={currentView.path}
+                src={getViewPath(currentView.path)}
                 title={currentView.title}
                 onLoad={handleIframeLoad}
                 className="w-full h-full border-none bg-white rounded-[38px] overflow-y-auto"
@@ -583,7 +585,7 @@ export default function App() {
             <iframe
               key={iframeKey}
               ref={iframeRef}
-              src={currentView.path}
+              src={getViewPath(currentView.path)}
               title={currentView.title}
               onLoad={handleIframeLoad}
               className="w-full h-full border-none bg-white"
