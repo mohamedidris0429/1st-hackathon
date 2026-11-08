@@ -17,6 +17,17 @@
 (function () {
   'use strict';
 
+  const INR_FORMATTER = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR'
+  });
+
+  function formatINR(value) {
+    return INR_FORMATTER.format(Number(value));
+  }
+
+  window.formatINR = formatINR;
+
   // ==========================================
   // 1. DATA STORAGE & PERSISTENCE ARCHITECTURE
   // ==========================================
@@ -252,16 +263,16 @@
 
     // Update any total elements present on checkout or cart pages
     document.querySelectorAll('[data-cart-subtotal]').forEach((el) => {
-      el.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
+      el.textContent = formatINR(subtotal);
     });
     document.querySelectorAll('[data-cart-delivery]').forEach((el) => {
-      el.textContent = deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`;
+      el.textContent = deliveryFee === 0 ? 'FREE' : formatINR(deliveryFee);
     });
     document.querySelectorAll('[data-cart-gst]').forEach((el) => {
-      el.textContent = `₹${gst.toLocaleString('en-IN')}`;
+      el.textContent = formatINR(gst);
     });
     document.querySelectorAll('[data-cart-grandtotal]').forEach((el) => {
-      el.textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
+      el.textContent = formatINR(grandTotal);
     });
   }
 
@@ -1121,13 +1132,13 @@ Ratified by Cauvery Delta Agro-Ledger Protocol v4.8.1
             btn.style.background = '#059669';
             btn.style.color = '#ffffff';
 
-            window.showToast('Promo Code Applied!', `${promo.label} activated! ₹${promo.discount} deducted from total.`, 'success');
+            window.showToast('Promo Code Applied!', `${promo.label} activated! ${formatINR(promo.discount)} deducted from total.`, 'success');
 
             // Apply visual strike-through to subtotal / grandtotal
             document.querySelectorAll('.font-headline-xl, #cart-subtotal, [data-cart-grandtotal]').forEach((el) => {
               const currentTotal = parseInt(el.textContent?.replace(/[^0-9]/g, '') || '444', 10);
               const newTotal = Math.max(50, currentTotal - promo.discount);
-              el.innerHTML = `<span style="text-decoration: line-through; opacity: 0.6; font-size: 0.8em; margin-right: 6px;">₹${currentTotal}</span> ₹${newTotal}`;
+              el.innerHTML = `<span style="text-decoration: line-through; opacity: 0.6; font-size: 0.8em; margin-right: 6px;">${formatINR(currentTotal)}</span> ${formatINR(newTotal)}`;
             });
           } else {
             window.showToast('Invalid Coupon', `Voucher code "${code}" not recognized. Try NAGA10 or DELTA50.`, 'warning');
