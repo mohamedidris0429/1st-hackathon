@@ -877,6 +877,27 @@ export const ROUTE_MAP: Record<string, string> = {
   'audit-logs': 'v51',
   'audit': 'v51',
   'rbac': 'v51',
-  'governance': 'v51'
+  'governance': 'v51',
+  // Slugs emitted by view sidebars/bottom-navs (fixes previously dead links)
+  'consumer-view': 'v02',
+  'stores': 'v02',
+  'profile': 'v21',
+  'store-profile-fssai': 'v21',
+  'settings-pos-integration': 'v19',
+  'price-radar-competitor-intel': 'v19',
+  'nagapattinam-store-tenders': 'v27',
+  'wholesale-price-radar': 'v27',
+  'gst-and-escrow-payouts': 'v30',
+  'mill-fssai-and-quality-lab': 'v32',
+  'supplier-compliance': 'v32',
+  'b2b-command-center': 'v39',
+  'digital-contract-vault': 'v42',
+  'rfq-engine-b2b': 'v43',
+  'spend-analytics': 'v44',
+  'admin-overview-exec': 'v45',
+  'commission-management': 'v46',
+  'demand-intelligence': 'v47',
+  'fraud-sentinel-admin': 'v48',
+  'support-desk': 'v50'
 };
 

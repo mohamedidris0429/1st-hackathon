@@ -259,7 +259,12 @@
 
     const deliveryFee = subtotal > 500 ? 0 : 30;
     const gst = Math.round(subtotal * 0.05);
-    const grandTotal = subtotal + deliveryFee + gst;
+    // Live promo discount (persisted across all 51 screens for consistent data)
+    const PROMO_TABLE = { NAGA10: 50, DELTA50: 50, VERI100: 100, PONGAL2026: 120 };
+    let appliedPromo = '';
+    try { appliedPromo = localStorage.getItem('vg_promo_code_v2') || ''; } catch {}
+    const discount = Math.min(PROMO_TABLE[appliedPromo] || 0, subtotal);
+    const grandTotal = Math.max(0, subtotal + deliveryFee + gst - discount);
 
     // Update any total elements present on checkout or cart pages
     document.querySelectorAll('[data-cart-subtotal]').forEach((el) => {
@@ -270,6 +275,9 @@
     });
     document.querySelectorAll('[data-cart-gst]').forEach((el) => {
       el.textContent = formatINR(gst);
+    });
+    document.querySelectorAll('[data-cart-discount]').forEach((el) => {
+      el.textContent = discount > 0 ? '-' + formatINR(discount) : formatINR(0);
     });
     document.querySelectorAll('[data-cart-grandtotal]').forEach((el) => {
       el.textContent = formatINR(grandTotal);
@@ -1132,14 +1140,11 @@ Ratified by Cauvery Delta Agro-Ledger Protocol v4.8.1
             btn.style.background = '#059669';
             btn.style.color = '#ffffff';
 
-            window.showToast('Promo Code Applied!', `${promo.label} activated! ${formatINR(promo.discount)} deducted from total.`, 'success');
+            // Persist the applied voucher so totals stay consistent across all screens (single source of truth)
+            try { localStorage.setItem('vg_promo_code_v2', code); } catch {}
+            recalculateCartDOMTotals();
 
-            // Apply visual strike-through to subtotal / grandtotal
-            document.querySelectorAll('.font-headline-xl, #cart-subtotal, [data-cart-grandtotal]').forEach((el) => {
-              const currentTotal = parseInt(el.textContent?.replace(/[^0-9]/g, '') || '444', 10);
-              const newTotal = Math.max(50, currentTotal - promo.discount);
-              el.innerHTML = `<span style="text-decoration: line-through; opacity: 0.6; font-size: 0.8em; margin-right: 6px;">${formatINR(currentTotal)}</span> ${formatINR(newTotal)}`;
-            });
+            window.showToast('Promo Code Applied!', `${promo.label} activated! ${formatINR(promo.discount)} deducted from total.`, 'success');
           } else {
             window.showToast('Invalid Coupon', `Voucher code "${code}" not recognized. Try NAGA10 or DELTA50.`, 'warning');
           }
@@ -1170,6 +1175,34 @@ Ratified by Cauvery Delta Agro-Ledger Protocol v4.8.1
             btn.innerHTML = `✓ Order ${orderId} Confirmed`;
             btn.style.background = '#059669';
             btn.style.color = '#ffffff';
+
+            // Commit the order to the persistent Orders Ledger (consistent across all screens)
+            try {
+              const ledger = JSON.parse(localStorage.getItem(STORAGE_KEYS.ORDERS) || '[]');
+              const currentCart = getStoredCart();
+              let sub = 0;
+              currentCart.forEach((it) => { sub += (it.price || 0) * (it.qty || 1); });
+              const fee = sub > 500 ? 0 : 30;
+              const taxAmt = Math.round(sub * 0.05);
+              const PROMO_TABLE = { NAGA10: 50, DELTA50: 50, VERI100: 100, PONGAL2026: 120 };
+              const promoCode = localStorage.getItem('vg_promo_code_v2') || '';
+              const disc = Math.min(PROMO_TABLE[promoCode] || 0, sub);
+              ledger.unshift({
+                id: orderId,
+                placedAt: new Date().toISOString(),
+                items: currentCart.map((it) => ({ name: it.name, qty: it.qty || 1, price: it.price })),
+                subtotal: sub, delivery: fee, gst: taxAmt, discount: disc,
+                total: Math.max(0, sub + fee + taxAmt - disc),
+                store: 'Sri Murugan Supermarket',
+                district: (selectedDistrict && selectedDistrict.name) || 'Nagapattinam',
+                status: 'Confirmed • Dispatch ETA 24 mins'
+              });
+              localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(ledger.slice(0, 50)));
+              // Clear cart after successful checkout so badges/totals stay consistent everywhere
+              saveStoredCart([]);
+              try { localStorage.removeItem('vg_promo_code_v2'); } catch {}
+              updateCartBadges();
+            } catch {}
 
             window.showToast(
               `Order ${orderId} Placed!`,
@@ -1415,13 +1448,63 @@ Ratified by Cauvery Delta Agro-Ledger Protocol v4.8.1
     }
   });
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bindAllControls);
-  } else {
-    bindAllControls();
+  // ==========================================
+  // 12. LIVE PRODUCT SEARCH & FILTER ENGINE (demo catalog powered by the shared cart/product data model)
+  // ==========================================
+  function initSearchEngine() {
+    document.querySelectorAll('input[type="text"], input:not([type]), input[type="search"]').forEach((inp) => {
+      if (inp.dataset.vgSearchBound) return;
+      const ph = (inp.getAttribute('placeholder') || '').toLowerCase();
+      const looksLikeProductSearch =
+        ph.includes('search') && !ph.includes('district') && !ph.includes('store') && !ph.includes('sku') && !ph.includes('audit');
+      if (!looksLikeProductSearch) return;
+
+      inp.dataset.vgSearchBound = 'true';
+      inp.addEventListener('input', () => {
+        const q = inp.value.trim().toLowerCase();
+        let visibleCount = 0;
+        const cards = document.querySelectorAll('.product-card, [id^="product-card"], tr[id^="row-sku"], [data-product-card]');
+        if (cards.length > 0) {
+          cards.forEach((card) => {
+            const text = (card.textContent || '').toLowerCase();
+            const match = !q || text.includes(q);
+            card.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+          });
+          if (q) {
+            window.showToast(
+              'Live Search',
+              `${visibleCount} verified product${visibleCount === 1 ? '' : 's'} matched "${inp.value.trim()}" in the Nagapattinam ledger.`,
+              'filter'
+            );
+          }
+        }
+      });
+      // Enter key jumps to Price Comparison results screen for grocery queries
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = inp.value.trim();
+          if (val) {
+            window.showToast('Search Executed', `Query "${val}" routed to live price comparison results.`, 'filter');
+            navigateTo('price-compare');
+          }
+        }
+      });
+    });
   }
 
-  setTimeout(bindAllControls, 400);
-  setTimeout(bindAllControls, 1200);
-  setTimeout(bindAllControls, 2500);
+  // Re-bind controls whenever the host shell swaps screens inside this iframe (hashchange safety net)
+  window.addEventListener('hashchange', () => setTimeout(bindAllControls, 150));
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { bindAllControls(); initSearchEngine(); });
+  } else {
+    bindAllControls();
+    initSearchEngine();
+  }
+
+  setTimeout(() => { bindAllControls(); initSearchEngine(); }, 400);
+  setTimeout(() => { bindAllControls(); initSearchEngine(); }, 1200);
+  setTimeout(() => { bindAllControls(); initSearchEngine(); }, 2500);
 })();

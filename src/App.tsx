@@ -113,59 +113,9 @@ export default function App() {
         const rawPath = (event.data.path || '').toString().trim().toLowerCase();
         const path = rawPath.replace(/^\/+/, '').replace(/\.html$/, '');
 
-        const MOBILE_MAP: Record<string, string> = {
-          'home': 'v08',
-          'store-discovery': 'v08',
-          'price-compare': 'v09',
-          'compare': 'v09',
-          'my-cart': 'v07',
-          'cart': 'v07',
-          'checkout': 'v07',
-          'product-details': 'v06',
-          'details': 'v06',
-          'auth': 'v10',
-          'login': 'v10',
-          'register': 'v10',
-          'welcome': 'v10',
-          'verification': 'v16',
-          'verification-dossier': 'v16',
-          'dossier': 'v16',
-          'scan-and-verify': 'v15',
-          'scanner': 'v15',
-          'scanner-hud': 'v15',
-          'district-demand': 'v18',
-          'demands': 'v18',
-          'demand-hub': 'v18',
-          'requests': 'v17',
-          'request-hub': 'v17',
-          'merchant-dashboard': 'v23',
-          'store-dashboard': 'v23',
-          'overview': 'v23',
-          'inventory-sku-studio': 'v26',
-          'inventory': 'v26',
-          'sku-studio': 'v26',
-          'live-orders-dispatch': 'v25',
-          'orders': 'v25',
-          'live-orders': 'v25',
-          'customer-requests-bids': 'v24',
-          'customer-requests': 'v24',
-          'merchant-portal': 'v23',
-          'wholesale-sourcing': 'v33',
-          'wholesale': 'v33',
-          'bulk-product-catalogue': 'v34',
-          'catalogue': 'v34',
-          'merchant-rfqs-and-quotations': 'v35',
-          'rfqs': 'v35',
-          'purchase-orders': 'v36',
-          'supply-and-dispatch-fleet': 'v37',
-          'dispatch': 'v37',
-          'supplier-onboarding': 'v38',
-          'compliance': 'v38'
-        };
-
-        let targetId = (isMobileMode || currentView.isMobile) && MOBILE_MAP[path]
-          ? MOBILE_MAP[path]
-          : ROUTE_MAP[path];
+        // Canonical routing: every slug resolves to its primary (desktop) screen.
+        // Mobile variants remain reachable via the catalog, prev/next controls and direct hashes.
+        let targetId = ROUTE_MAP[path];
 
         if (!targetId) {
           const directMatch = ALL_VIEWS.find(
@@ -185,13 +135,17 @@ export default function App() {
           if (found && found.id !== currentView.id) {
             setCurrentView(found);
           }
+        } else if (path) {
+          // Unknown slug: surface it in the console (dev diagnostics) instead of silently doing nothing,
+          // so broken navigation links are easy to find and fix.
+          console.warn(`[VeriGrocery Router] No route mapped for path "${path}" (from view ${currentView.id})`);
         }
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [currentView, isMobileMode]);
+  }, [currentView]);
 
   // Update hash when view changes
   useEffect(() => {
